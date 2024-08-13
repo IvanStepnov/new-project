@@ -1,0 +1,67 @@
+# Качаем imadge nginx 
+	docker pull nginx
+# Запускаем контейнер
+	docker run nginx
+# Смотрим ID контейнера 
+	docker container list 
+# Ныряем в контейнер и ставим пакеты net-tools, iputils-ping, nano, чтобы пинговать из контейнера
+	docker exec -it ID контейнера /bin/bash
+	apt update
+	apt install net-tools iputils-ping nano
+# Сохраняем обновленный контейнер в новый имадж
+	docker container commit -m 'add tools' имя контейнера nginx_up1
+# Проверяем, появился новый имадж или нет
+	docker image list 
+# Выгружаем текущий контейнер из памяти 
+	docker container rm -f ID контейнера
+# Запускаем два контейнера из нового имаджа 
+	docker run nginx_up1
+# Переименовываем их в nginx_1 и nginx_2, чтобы не перепутать 
+	docker container rename ID контейнера nginx_1
+	docker container rename ID контейнера nginx_2
+# Прыгаем в оба контейнера и меняем стартовую страничку nginx, чтобы отличались
+# Лежит в /usr/share/nginx/html
+# Сохраяем оба контейнера в новые имаджи , чтобы сохранились странички 
+	docker container commit -m 'change html' ID контейнера nginx_1
+	docker container commit -m 'change html' ID контейнера nginx_2
+# Запускаем сразу с пробросом портов
+	docker container run -d -p 2001:80 nginx_1
+	docker container run -d -p 2001:80 nginx_2
+# Фоткаем (1)
+# Инспектируем контейнеры , смотрим какие у них есть ip адреса 
+	docker inspect ID контейнера
+# У контейнера на имедже nginx_1 адрес 172.17.0.2
+# У контейнера на имедже nginx_2 адрес 172.17.0.3
+# Проверяем еще раз ifconfig'ом 
+	docker exec -it ID контейнера ifconfig 
+# Фоткаем (2)
+# Пытаемся пинговать контейнеры друг из друга 
+# Фоткаем (3)
+# Создаем сетку которая полностью отключит взаимодействие с сетью 
+	docker netwokr create -d null netdeny
+# Выдает ошибку , так как сетка с таким драйвером уже есть, а вторую сетку
+# с драйвером null создать нельзя 
+# Подключаем существующую сеть null к контейнерам
+	docker network connect none ID контейнера
+# Выдает ошибку о том что не может присоединить сеть с дравером none
+# в приватном режиме 
+# Отключаем сеть bridge 
+	docker network disconnect bridge ID контейнера
+# Подключаем сеть none (Хотя там уже внутри только Loopback)
+	docker network connect none ID контейнера
+# Ныряем в контейнер , проверяем пингом
+# Фоткам (4)
+# Останвливаем первый контейнер и запускаем его с временной tmpfs 
+	docker run -it --mount type=tmpfs,destination=/mount_tmp nginx_1
+# Фоткаем (5)
+# Делаем волюм с именем vol1
+	docker volume create --name vol1 
+# Инстпектируем его, смотрим где папка с волиумом 
+	docker inspect vol1
+# идем в папаку /var/lib/docker/volumes/vol1/_data 
+# пишем скрипт Hello
+# останавливаем предыдущие контейнеры , запускаем c волиумами
+docker run -d --mount type=volume,source=vol1,destination=/mount_vol1 nginx_1
+docker run -d --mount type=volume,source=vol1,destination=/mount_vol1 nginx_2
+
+
